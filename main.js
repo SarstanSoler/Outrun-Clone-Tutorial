@@ -15,6 +15,9 @@ const STATE_RESTART = 2;
 const STATE_PLAY = 3;
 const STATE_GAMEOVER = 4;
 
+//sprites
+const PLAYER = 0;
+
 // Global variables
 //_________
 
@@ -32,6 +35,7 @@ class MainScene extends Phaser.Scene {
   //Loads all assets
   preload() {
     this.load.image('skybg', '../assets/skybg.jpg');
+    this.load.image('imgPlayer', '../assets/esprit.png');
   }
 
   //Creates all objects
@@ -39,8 +43,14 @@ class MainScene extends Phaser.Scene {
     //backgrounds
     this.sprBack = this.add.image(SCREEN_CX, SCREEN_CY, 'skybg');
 
+    // array of sprites that will be "manually" drawn on a rendering texture
+    this.sprites = [
+      this.add.image(0, 0, 'imgPlayer').setVisible(false)
+    ]
+    
     //instances
     this.circuit = new Circuit(this);
+    this.player = new Player(this);
     this.camera = new Camera(this);
     this.settings = new Settings(this);
     
@@ -63,19 +73,25 @@ class MainScene extends Phaser.Scene {
       case STATE_INIT:
 
         this.camera.init();
+        this.player.init();
         
         state = STATE_RESTART;
+        
         break;
 
       case STATE_RESTART:
 
         this.circuit.create();
+        this.player.restart();
         
         state = STATE_PLAY;
         break;
 
       case STATE_PLAY:
-
+        //duration of the time period
+        var dt = Math.min(1, delta/1000);
+        
+        this.player.update(dt);
         this.camera.update();
         this.circuit.render3D();
         

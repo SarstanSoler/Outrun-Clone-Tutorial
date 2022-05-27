@@ -23,7 +23,17 @@ class Camera {
 
   //Updates camera position.
   update() {
-    //Place the camera behind the player at the desired distance
-    this.z = -this.distToPlayer;
+    //references
+    var player = this.scene.player;
+    var circuit = this.scene.circuit;
+    
+    //since player X is normalized within [-1, 1], then the camera X must be multiplied by road width
+    this.x = player.x * circuit.roadWidth;
+    
+    //Place the camera to follow behind the player
+    this.z = player.z - this.distToPlayer;
+
+    //don't let camera Z go negative
+    if (this.z<0) this.z += circuit.roadLength;
   }
 }

@@ -6,6 +6,9 @@ class Circuit {
     //Graphics to draw road polygons on it
     this.graphics = scene.add.graphics(0, 0);
 
+    //texture to draw the sprites on it
+    this.texture = scene.add.renderTexture(0, 0, SCREEN_W, SCREEN_H);
+    
     //array of road segments
     this.segmeents = [];
 
@@ -41,10 +44,10 @@ class Circuit {
     this.createRoad();
 
     //colorize first segments in a starting color, last segments in a finish color
-    for (var n=0; n<this.rumble_segments; n++){
+    for (var n = 0; n < this.rumble_segments; n++) {
       this.segments[n].color.road = '0xFFFFFF'; //start
-      this.segments[this.segments.length-1-n].color.road = '0x222222'; //finish
-      
+      this.segments[this.segments.length - 1 - n].color.road = '0x222222'; //finish
+
     }
 
     //store the total number of segments
@@ -59,7 +62,7 @@ class Circuit {
   //_________
 
   createRoad() {
-    this.createSection(1000);
+    this.createSection(300);
   }
 
   //creates a road section. Parameters:
@@ -79,7 +82,7 @@ class Circuit {
     //define colors
     const COLORS = {
       LIGHT: { road: '0x888888', grass: '0x429352', rumble: '0xb8312e' },
-      DARK: { road: '0x666666', grass: '0x397d46', rumble: '0xDDDDDD', lane: '0xFFFFFF'}
+      DARK: { road: '0x666666', grass: '0x397d46', rumble: '0xDDDDDD', lane: '0xFFFFFF' }
     }
 
     //get the current number of segments
@@ -135,6 +138,9 @@ class Circuit {
   render3D() {
     this.graphics.clear();
 
+    //define the clipping bottom line to render only segments above it (otherwise you get some fun anomalies)
+    var clipBottomLine = SCREEN_H;
+
     //get the camera
     var camera = this.scene.camera;
 
@@ -147,10 +153,16 @@ class Circuit {
       var currIndex = (baseIndex + n) % this.total_segments;
       var currSegment = this.segments[currIndex];
 
+      //get the camera offset-Z to loop back the road
+      var offsetZ = (currIndex <baseIndex) ? this.roadLength : 0;
+        
       //projects the segment to the screen space
-      this.project3D(currSegment.point, camera.x, camera.y, camera.z, camera.distToPlane);
+      this.project3D(currSegment.point, camera.x, camera.y, camera.z - offsetZ, camera.distToPlane);
 
-      if (n > 0) {
+      //draw this segment only if it is above the clipping bottom line
+      var currBottomLine = currSegment.point.screen.y;
+      
+      if (n > 0 && currBottomLine < clipBottomLine) {
         var prevIndex = (currIndex > 0) ? currIndex - 1 : this.total_segments - 1;
         var prevSegment = this.segments[prevIndex];
         var p1 = prevSegment.point.screen;
@@ -161,8 +173,20 @@ class Circuit {
           p2.x, p2.y, p2.w,
           currSegment.color
         );
+
+        //move the clipping bottom line up
+        clipBottomLine = currBottomLine;
+        
       }
     }
+
+    //draw all the visible objects on the rendering texture
+    this.texture.clear();
+
+    //draw player
+    var player = this.scene.player;
+    this.texture.draw(player.sprite, player.screen.x, player.screen.y);
+    
   }
   //Draws a segment
   drawSegment(x1, y1, w1, x2, y2, w2, color) {
@@ -179,32 +203,32 @@ class Circuit {
     var rumble_w2 = w2 / 5;
     this.drawPolygon(x1 - w1 - rumble_w1, y1, x1 - w1, y1, x2 - w2, y2, x2 - w2 - rumble_w2, y2, color.rumble);
     this.drawPolygon(x1 + w1 + rumble_w1, y1, x1 + w1, y1, x2 + w2, y2, x2 + w2 + rumble_w2, y2, color.rumble);
-  
 
-  //draw lanes
-  if (color.lane) {
-   var line_w1 = (w1/20) /2;
-    var line_w2 = (w2/20) /2;
 
-    var lane_w1 = (w1*2) / this.roadLanes;
-    var lane_w2 = (w2*2) / this.roadLanes;
+    //draw lanes
+    if (color.lane) {
+      var line_w1 = (w1 / 20) / 2;
+      var line_w2 = (w2 / 20) / 2;
 
-    var lane_x1 = x1-w1;
-    var lane_x2 = x2 - w2;
+      var lane_w1 = (w1 * 2) / this.roadLanes;
+      var lane_w2 = (w2 * 2) / this.roadLanes;
 
-    for (var i=1; i<this.roadLanes; i++){
-      lane_x1 += lane_w1;
-      lane_x2 += lane_w2;
+      var lane_x1 = x1 - w1;
+      var lane_x2 = x2 - w2;
 
-      this.drawPolygon(
-        lane_x1-line_w1, y1,
-        lane_x1+line_w1, y1,
-        lane_x2+line_w2, y2,
-        lane_x2-line_w2, y2,
-        color.lane
-      );
+      for (var i = 1; i < this.roadLanes; i++) {
+        lane_x1 += lane_w1;
+        lane_x2 += lane_w2;
+
+        this.drawPolygon(
+          lane_x1 - line_w1, y1,
+          lane_x1 + line_w1, y1,
+          lane_x2 + line_w2, y2,
+          lane_x2 - line_w2, y2,
+          color.lane
+        );
+      }
     }
-  }
   }
 
   //Draws a polygon defined with four points and color
